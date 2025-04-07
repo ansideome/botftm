@@ -11,7 +11,7 @@ async def start(
         [InlineKeyboardButton("Bantuan", callback_data='help')]
     ]
     await update.message.reply_text(
-        "Halo, saya adalah bot yang dapat melakukan beberapa perintah. Cek di /help untuk melihat command yang tersedia",
+        "Halo, saya adalah bot yang dapat melakukan beberapa perintah. Tekan 'Bantuan' untuk melihat command yang tersedia",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -22,10 +22,6 @@ async def help(
     query = update.callback_query
     await query.answer()
     
-    keyboard = [
-        [InlineKeyboardButton("Cek GPON", callback_data='cekgpon')]
-    ]
-    
     await query.edit_message_text(
         """
 Command yang tersedia:
@@ -35,20 +31,18 @@ Command yang tersedia:
 
 /cekgpon - Mengecek data GPON
         """
-    , reply_markup=InlineKeyboardMarkup(keyboard))
+    )
     
-# async def button(
-#     update: Update,
-#     context: CallbackContext
-# ) -> None:
-#     query = update.callback_query
-#     await query.answer()
+async def button(
+    update: Update,
+    context: CallbackContext
+) -> None:
+    query = update.callback_query
+    await query.answer()
 
-#     if query.data == 'help':
-#         await help(update, context)
-#     elif query.data == 'cekgpon':
-#         await cekgpon_command.start_cekgpon(update, context)
+    if query.data == 'help':
+        await help(update, context)
         
 def register_handler(rh):
     rh.add_handler(CommandHandler('start', start))
-    # rh.add_handler(CallbackQueryHandler(button))
+    rh.add_handler(CallbackQueryHandler(button))
