@@ -30,6 +30,7 @@ Command yang tersedia:
 /help - Menampilkan daftar command yang tersedia
 
 /cekgpon - Mengecek data GPON
+/ceksto - Mengecek data Status Feeder STO
         """
     )
     
