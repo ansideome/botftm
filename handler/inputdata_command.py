@@ -1,7 +1,8 @@
 import os
-from dotenv import load_dotenv
-import httpx
+import tempfile
 import pandas as pd
+import httpx
+from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import CallbackContext, ConversationHandler, CommandHandler, MessageHandler, filters
 
@@ -22,28 +23,28 @@ async def start_inputdata(
 async def main_inputdata(
     update: Update, 
     context: CallbackContext
-    ) -> None:
+) -> None:
     file = update.message.document
     reply_message = []
 
     if file.mime_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
         processed_file = await file.get_file()
-        filename = f"downloads/{file.file_name}"
-        await processed_file.download_to_drive(filename)
-        await update.message.reply_text('Data Sedang Diproses... Tunggu Sebentar')
         
-        try:
-            df = pd.read_excel(filename)
-            df.columns = df.columns.str.lower()
-            df.columns = df.columns.str.replace(' ', '_')
-            df = df.astype(str)
-            df = df.replace([pd.NA, 'nan', 'NaN', ''], None) 
-            list_df = df.to_dict(orient='records')
+        # Gunakan tempfile untuk menyimpan file sementara
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            await processed_file.download_to_drive(tmp_file.name)
+            await update.message.reply_text('Data Sedang Diproses... Tunggu Sebentar')
 
-            transformed_data = []
+            try:
+                # Membaca file Excel dari tmp_file
+                df = pd.read_excel(tmp_file.name)
+                df.columns = df.columns.str.lower()
+                df.columns = df.columns.str.replace(' ', '_')
+                df = df.astype(str)
+                df = df.replace([pd.NA, 'nan', 'NaN', ''], None)
+                list_df = df.to_dict(orient='records')
 
-            for data in list_df:
-                transformed = {}
+                transformed_data = []
 
                 fields = {
                     "witel": "witel",
@@ -64,34 +65,40 @@ async def main_inputdata(
                     "nama_odc": "nama_odc",
                 }
 
-                for field, source in fields.items():
-                    value = data.get(source)
-                    if value is not None:
-                        value = str(value).strip() if isinstance(value, str) else value
-                        transformed[field] = value
+                for data in list_df:
+                    transformed = {}
+
+                    for field, source in fields.items():
+                        value = data.get(source)
+                        if value is not None:
+                            value = str(value).strip() if isinstance(value, str) else value
+                            transformed[field] = value
+                        else:
+                            transformed[field] = None  # Pastikan kalau kosong atau None kirimkan None
+
+                    transformed_data.append(transformed)
+
+                # Kirim data ke API
+                for data in transformed_data:
+                    async with httpx.AsyncClient() as client:
+                        response = await client.post(f"{API_URL}", json=data)
+
+                    if response.status_code == 200:
+                        reply_message.append(f'✅ Data Berhasil Disimpan')
                     else:
-                        transformed[field] = None
+                        reply_message.append('❌ Terjadi Kesalahan saat menyimpan data')
 
-                transformed_data.append(transformed)
+            except Exception as e:
+                reply_message.append(f'❌ Terjadi Kesalahan saat mengambil data: {e}')
             
-            for data in transformed_data:
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(f"{API_URL}", json=data)
-
-                if response.status_code == 201:
-                    reply_message.append(f'✅ Data Berhasil Disimpan')
-                else:
-                    reply_message.append('❌ Terjadi Kesalahan saat menyimpan data')
-                        
-        except Exception as e:
-            reply_message.append(f'❌ Terjadi Kesalahan saat mengambil data')
+            # Hapus file sementara setelah selesai
+            os.remove(tmp_file.name)
     else:
         reply_message.append(
             '❌ Format File Tidak Sesuai! Harap kirim file excel yang sudah diformat dengan ketentuan yang ada'
         )
 
     await update.message.reply_text('\n'.join(reply_message))
-    os.remove(filename)
     
     return ConversationHandler.END
 
