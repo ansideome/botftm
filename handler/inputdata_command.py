@@ -83,7 +83,7 @@ async def main_inputdata(
                     async with httpx.AsyncClient() as client:
                         response = await client.post(f"{API_URL}", json=data)
 
-                    if response.status_code == 200:
+                    if response.status_code == 201:
                         reply_message.append(f'✅ Data Berhasil Disimpan')
                     else:
                         reply_message.append('❌ Terjadi Kesalahan saat menyimpan data')
