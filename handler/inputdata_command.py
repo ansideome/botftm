@@ -37,12 +37,11 @@ async def main_inputdata(
             df.columns = df.columns.str.lower()
             df.columns = df.columns.str.replace(' ', '_')
             df = df.astype(str)
-            df = df.replace(['nan', 'NaN', ''], pd.NA)
-            df['nama_gpon'] = df['nama_gpon'].replace(['nan', 'NaN', ''], pd.NA).ffill()
+            df = df.replace([pd.NA, 'nan', 'NaN', ''], None) 
             list_df = df.to_dict(orient='records')
-            
+
             transformed_data = []
-            
+
             for data in list_df:
                 transformed = {}
 
@@ -68,20 +67,21 @@ async def main_inputdata(
                 for field, source in fields.items():
                     value = data.get(source)
                     if value is not None:
-                        value = str(value).strip()
+                        value = str(value).strip() if isinstance(value, str) else value
                         transformed[field] = value
-                
-                transformed_data.append(transformed)
+                    else:
+                        transformed[field] = None
 
+                transformed_data.append(transformed)
             
             for data in transformed_data:
                 async with httpx.AsyncClient() as client:
                     response = await client.post(f"{API_URL}", json=data)
-                    
-                    if response.status_code == 201:
-                        reply_message.append(f'✅ Data {data["nama_gpon"]} Berhasil Ditambahkan!')
-                    else:
-                        reply_message.append(f'❌ Data {data["nama_gpon"]} Gagal Ditambahkan!')
+
+                if response.status_code == 201:
+                    reply_message.append(f'✅ Data Berhasil Disimpan')
+                else:
+                    reply_message.append('❌ Terjadi Kesalahan saat menyimpan data')
                         
         except Exception as e:
             reply_message.append(f'❌ Terjadi Kesalahan saat mengambil data')
