@@ -32,6 +32,7 @@ Command yang tersedia:
 /cekgpon - Mengecek data GPON
 /ceksto - Mengecek data Status Feeder STO
 /inputdata - Menginput data GPON via Excel
+/uplinkgpon - Menginput data Uplink GPON via Excel
         """
     )
     

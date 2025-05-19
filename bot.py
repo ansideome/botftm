@@ -5,6 +5,7 @@ from handler.base_command import register_handler as base_handler
 from handler.cekgpon_command import register_handler as cekgpon_handler
 from handler.ceksto_command import register_handler as cekwto_handler
 from handler.inputdata_command import register_handler as inputdata_handler
+from handler.inputuplink_command import register_handler as inputuplink_handler
 
 load_dotenv()
 
@@ -17,6 +18,7 @@ base_handler(app)
 cekgpon_handler(app)
 cekwto_handler(app)
 inputdata_handler(app)
+inputuplink_handler(app)
 
 if __name__ == "__main__":
     print('Bot running...')
