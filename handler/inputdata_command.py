@@ -32,6 +32,7 @@ async def main_inputdata(
         
         # Gunakan tempfile untuk menyimpan file sementara
         with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            tmp_file_path = tmp_file.name
             await processed_file.download_to_drive(tmp_file.name)
             await update.message.reply_text('Data Sedang Diproses... Tunggu Sebentar')
 
@@ -81,18 +82,25 @@ async def main_inputdata(
                 # Kirim data ke API
                 for data in transformed_data:
                     async with httpx.AsyncClient() as client:
-                        response = await client.post(f"{API_URL}", json=data)
-
-                    if response.status_code == 201:
-                        reply_message.append(f'✅ Data Berhasil Disimpan')
-                    else:
-                        reply_message.append('❌ Terjadi Kesalahan saat menyimpan data')
+                        response = await client.get(f"{API_URL}?sto={data['sto']}&nama_lemari_ftm_oakses={data['nama_lemari_ftm_oakses']}")
+                    
+                        response_data = response.json()
+                        if response_data.get("data", {}).get("from") is 1:
+                            remove_data = await client.delete(f"{API_URL}?sto={data['sto']}&nama_lemari_ftm_oakses={data['nama_lemari_ftm_oakses']}")
+                            if remove_data.status_code == 200:
+                                await client.post(f"{API_URL}", json=data)
+                                reply_message.append(f"✅ Data GPON {data['sto']} - {data['nama_lemari_ftm_oakses']} Berhasil Terupdate")
+                            else:
+                                reply_message.append(f"❌ Terjadi Kesalahan saat mengupdate data: {remove_data.status_code}")
+                        elif response_data.get("data", {}).get("from") is None:
+                            await client.post(f"{API_URL}", json=data)
+                            reply_message.append(f"✅ Data GPON {data['sto']} - {data['nama_lemari_ftm_oakses']} Berhasil Ditambahkan")
 
             except Exception as e:
                 reply_message.append(f'❌ Terjadi Kesalahan saat mengambil data: {e}')
-            
-            # Hapus file sementara setelah selesai
-            os.remove(tmp_file.name)
+
+        tmp_file.close()    
+        os.remove(tmp_file_path)
     else:
         reply_message.append(
             '❌ Format File Tidak Sesuai! Harap kirim file excel yang sudah diformat dengan ketentuan yang ada'
